@@ -1,0 +1,17 @@
+:root{--bg:#0a0a0a;--fg:#e8e4da;--mut:#8d8a82;--line:#2a2a2a;--acc:#5269ff;--warn:#ffb454}
+@media(prefers-color-scheme:light){:root{--bg:#f6f3ec;--fg:#0e1428;--mut:#667;--line:#d8d3c6;--acc:#1430ff;--warn:#8a5200}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 "Helvetica Neue",Inter,system-ui,sans-serif;height:100vh;display:flex;flex-direction:column}
+header{display:flex;gap:10px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--line)}.sp{flex:1}
+main{flex:1;display:grid;grid-template-columns:220px 1fr 320px;min-height:0}
+aside,section{padding:10px;overflow:auto;border-right:1px solid var(--line)}#srcs{border:0}
+#chat{display:flex;flex-direction:column;padding:0}#msgs{flex:1;overflow:auto;padding:12px}
+button,input,select,textarea{font:inherit;color:inherit;background:transparent;border:1px solid var(--line);border-radius:6px;padding:5px 9px}
+button{cursor:pointer}button:hover{border-color:var(--acc)}
+#ask{display:flex;gap:6px;padding:10px;border-top:1px solid var(--line)}#ask textarea{flex:1;resize:none}
+.m{margin:0 0 14px;white-space:pre-wrap}.m.user{color:var(--acc)}.muted{color:var(--mut)}.pill{border:1px solid var(--line);border-radius:99px;padding:0 8px;font-size:12px;color:var(--mut)}
+.warn,.flag{color:var(--warn)}.flag{font-size:13px}
+.conv{display:flex;gap:4px;align-items:center;padding:4px;border-radius:6px;cursor:pointer}.conv.on{background:var(--line)}.conv span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.conv button{padding:0 5px;border:0}
+.src{border:1px solid var(--line);border-radius:8px;padding:8px;margin:0 0 8px;font-size:13px}.src b{display:block}.src .meta{color:var(--mut);font-size:12px}
+#gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9}#gate[hidden]{display:none}
+#gateForm{display:flex;flex-direction:column;gap:10px;width:min(360px,90vw)}dialog{background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:10px;max-width:480px}dialog label{display:block;margin:8px 0}dialog input:not([type=checkbox]),dialog select{width:100%}
+@media(max-width:800px){main{grid-template-columns:1fr}#convs,#srcs{display:none}}

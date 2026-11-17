@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GaralDasAI</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<div id="gate"><form id="gateForm">
+  <h1>GaralDasAI</h1><p class="muted">Internal tool. The library is encrypted; enter the team passphrase to unlock it in this tab.</p>
+  <input id="pass" type="password" placeholder="Team passphrase" autocomplete="off" required>
+  <label><input id="remember" type="checkbox"> Remember for this tab session only</label>
+  <button>Unlock</button><p id="gateMsg" class="muted"></p>
+</form></div>
+<header><b>GaralDasAI</b> <span class="pill" id="demo"></span><span id="status" class="muted"></span>
+  <span class="sp"></span><button id="btnSet">Settings</button><button id="btnLock">Lock</button></header>
+<main>
+  <aside id="convs"><button id="newChat">+ New chat</button><div id="convList"></div><button id="exportAll">Export all (JSON)</button></aside>
+  <section id="chat"><div id="msgs"></div>
+    <form id="ask"><textarea id="q" rows="2" placeholder="Ask about the library..."></textarea><button id="send">Ask</button><button id="stop" type="button" hidden>Stop</button></form></section>
+  <aside id="srcs"><h3>Sources</h3><div id="srcList" class="muted">Retrieved chunks show here.</div></aside>
+</main>
+<dialog id="dlg"><form method="dialog">
+  <h3>Settings</h3>
+  <p class="warn">Your API key is stored in this browser's localStorage, unencrypted, and sent only to the provider you pick. Anyone using this browser profile can read it. Use a key with a low spend limit. Do not use on a shared computer.</p>
+  <label>Provider <select id="prov"></select></label>
+  <label>Model <input id="model" list="models"><datalist id="models"></datalist></label>
+  <p class="muted">Model ids are editable: type any id your key can use. Defaults: Anthropic claude-haiku-5-5, Gemini gemini-3.8-flash, OpenAI gpt-5-mini.</p>
+  <label>Base URL (OpenAI-compatible only) <input id="base" placeholder="https://api.openai.com/v1"></label>
+  <label>API key for this provider <input id="key" type="password" autocomplete="off"></label>
+  <label><input id="useRerank" type="checkbox"> Local rerank (cross-encoder in this browser, WebGPU or WASM; top 20; default on)</label>
+  <label><input id="llmRerank" type="checkbox"> LLM rerank (sends the top 20 passages, cut to 400 characters, to your provider's fast model; off by default)</label>
+  <label><input id="deep" type="checkbox"> Deep search (up to 2 extra retrieval hops)</label>
+  <div><button value="ok">Save</button> <button id="forget" type="button">Forget this key</button></div>
+</form></dialog>
+<script type="module" src="app.js"></script>
+</body></html>

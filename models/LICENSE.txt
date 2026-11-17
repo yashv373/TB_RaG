@@ -1,0 +1,17 @@
+Self-hosted models for NishkamTB_RaG (web/models/). Files are unmodified copies of the Hugging Face repos,
+converted to ONNX by Xenova (transformers.js format).
+
+1. Xenova/all-MiniLM-L6-v2 (query embedder; the index was built with this model)
+   Licence: Apache License 2.0. Upstream: sentence-transformers/all-MiniLM-L6-v2.
+   Source: https://huggingface.co/Xenova/all-MiniLM-L6-v2
+   Files: config.json, tokenizer.json, tokenizer_config.json, special_tokens_map.json, vocab.txt, onnx/model_quantized.onnx
+
+2. Xenova/ms-marco-MiniLM-L-6-v2 (cross-encoder reranker)
+   Licence: Apache License 2.0 (per the owner's record). Note: the Hugging Face metadata for the Xenova repo has no
+   licence field; the upstream model is cross-encoder/ms-marco-MiniLM-L-6-v2. Confirm on the upstream model card.
+   Source: https://huggingface.co/Xenova/ms-marco-MiniLM-L-6-v2
+   Files: config.json, tokenizer.json, tokenizer_config.json, special_tokens_map.json, vocab.txt,
+          onnx/model_quantized.onnx (WASM, q8), onnx/model_fp16.onnx (WebGPU)
+
+Apache License 2.0 full text: https://www.apache.org/licenses/LICENSE-2.0.txt
+Copyright notices are in each upstream model card.
