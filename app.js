@@ -20,7 +20,7 @@ async function tryUnlock(pass) {
   return true;
 }
 $('gateForm').onsubmit = async (e) => {
-  e.preventDefault(); const p = $('pass').value;
+  e.preventDefault(); const p = $('pass').value.trim();
   try { if (await tryUnlock(p) && $('remember').checked) ss.set('pp', p); } catch (err) { $('gateMsg').textContent = 'Error: ' + err.message; }
   $('pass').value = '';
 };
