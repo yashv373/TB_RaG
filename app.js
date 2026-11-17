@@ -1,5 +1,5 @@
 import { fetchManifest, unlock, loadIndex, retrieve, deepRetrieve, warmReranker } from './lib/rag.js';
-import { PROVIDERS, SYSTEM, buildContext, checkCitations, stream, rewriteQuery, followUpQuery, llmRank, splitThink, describeError } from './lib/llm.js';
+import { PROVIDERS, SYSTEM, buildContext, isLocal, checkCitations, stream, rewriteQuery, followUpQuery, llmRank, splitThink, describeError } from './lib/llm.js';
 import * as db from './lib/db.js';
 
 const $ = (id) => document.getElementById(id);
@@ -126,7 +126,9 @@ $('ask').onsubmit = async (e) => {
     if (r.weak) { answer = 'Weak or no coverage in the library for this question. Not answering from outside knowledge.'; paintAnswer(v, answer); }
     else {
       prog.set(`Asking ${c.provider}/${c.model}…`);
-      const msgs = [...history, { role: 'user', content: `${buildContext(r.sources)}\n\nQuestion: ${question}` }];
+      const local = isLocal(c.base), src = local ? r.sources.slice(0, 4) : r.sources;   // local models: fewer, shorter sources
+      const ctx = buildContext(src, local ? { maxChars: 6000, parentChars: 0 } : {});
+      const msgs = [...history.slice(local ? -2 : -8), { role: 'user', content: `Question: ${question}\n\nSources:\n${ctx}\n\nAnswer the question above using these sources. Do not repeat the sources. Question again: ${question}` }];
       const onStage = (s) => { if (s === 'connected') prog.set('Thinking…'); };
       for await (const t of stream({ ...llm, system: SYSTEM, messages: msgs, onStage })) {
         if (!started) { started = true; prog.clear(); }
