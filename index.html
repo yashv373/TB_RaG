@@ -23,6 +23,7 @@
   <label>Model <input id="model" list="models"><datalist id="models"></datalist></label>
   <p class="muted">Model ids are editable: type any id your key can use. Defaults: Anthropic claude-haiku-5-5, Gemini gemini-3.8-flash, OpenAI gpt-5-mini.</p>
   <label>Base URL (OpenAI-compatible only) <input id="base" placeholder="https://api.openai.com/v1"></label>
+  <label>Wait for the first reply (seconds, 5 to 600) <input id="timeout" type="number" min="5" max="600" step="5"></label>
   <label>API key for this provider <input id="key" type="password" autocomplete="off"></label>
   <label><input id="useRerank" type="checkbox"> Local rerank (cross-encoder in this browser, WebGPU or WASM; top 20; default on)</label>
   <label><input id="llmRerank" type="checkbox"> LLM rerank (sends the top 20 passages, cut to 400 characters, to your provider's fast model; off by default)</label>

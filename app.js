@@ -1,5 +1,5 @@
 import { fetchManifest, unlock, loadIndex, retrieve, deepRetrieve, warmReranker } from './lib/rag.js';
-import { PROVIDERS, SYSTEM, buildContext, checkCitations, stream, rewriteQuery, followUpQuery, llmRank } from './lib/llm.js';
+import { PROVIDERS, SYSTEM, buildContext, checkCitations, stream, rewriteQuery, followUpQuery, llmRank, splitThink, describeError } from './lib/llm.js';
 import * as db from './lib/db.js';
 
 const $ = (id) => document.getElementById(id);
@@ -27,16 +27,16 @@ $('gateForm').onsubmit = async (e) => {
 $('btnLock').onclick = () => { ss.del('pp'); ix = null; location.reload(); };
 
 // ---------- settings (one key per provider) ----------
-const cfg = () => { const provider = ls.get('provider', 'anthropic'); return { provider, model: ls.get('model-' + provider, PROVIDERS[provider].model), key: ls.get('key-' + provider), base: provider === 'openai' ? ls.get('base') : '' }; };
+const cfg = () => { const provider = ls.get('provider', 'anthropic'); return { provider, model: ls.get('model-' + provider, PROVIDERS[provider].model), key: ls.get('key-' + provider), base: provider === 'openai' ? ls.get('base') : '', timeoutMs: Math.max(5, Number(ls.get('llmTimeout', '30')) || 30) * 1000 }; };
 function fillSettings() {
   const c = cfg(); $('prov').innerHTML = Object.entries(PROVIDERS).map(([k, v]) => `<option value="${k}" ${k === c.provider ? 'selected' : ''}>${v.label}</option>`).join('');
-  $('model').value = c.model; $('key').value = c.key; $('base').value = ls.get('base');
+  $('model').value = c.model; $('key').value = c.key; $('base').value = ls.get('base'); $('timeout').value = ls.get('llmTimeout', '30');
   $('models').innerHTML = PROVIDERS[c.provider].models.map((m) => `<option value="${m}">`).join('');
   $('useRerank').checked = ls.get('rerank', '1') === '1'; $('llmRerank').checked = ls.get('llmRerank') === '1'; $('deep').checked = ls.get('deep') === '1';
 }
 $('btnSet').onclick = () => { fillSettings(); $('dlg').showModal(); };
 $('prov').onchange = () => { ls.set('provider', $('prov').value); fillSettings(); };
-$('dlg').onclose = () => { const p = $('prov').value; ls.set('provider', p); ls.set('model-' + p, $('model').value); ls.set('key-' + p, $('key').value); ls.set('base', $('base').value); ls.set('rerank', $('useRerank').checked ? '1' : '0'); ls.set('llmRerank', $('llmRerank').checked ? '1' : '0'); ls.set('deep', $('deep').checked ? '1' : '0'); };
+$('dlg').onclose = () => { const p = $('prov').value; ls.set('provider', p); ls.set('model-' + p, $('model').value); ls.set('key-' + p, $('key').value); ls.set('base', $('base').value); ls.set('llmTimeout', String(Math.max(5, Number($('timeout').value) || 30))); ls.set('rerank', $('useRerank').checked ? '1' : '0'); ls.set('llmRerank', $('llmRerank').checked ? '1' : '0'); ls.set('deep', $('deep').checked ? '1' : '0'); };
 $('forget').onclick = () => { ls.del('key-' + $('prov').value); $('key').value = ''; };
 
 // ---------- conversations ----------
@@ -56,7 +56,42 @@ async function start() { convs = await db.listConvs(); conv = conv && convs.find
 $('newChat').onclick = async () => { conv = db.newConv(); await db.putConv(conv); show(); refresh(); };
 $('exportAll').onclick = async () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([await db.exportConvs()], { type: 'application/json' })); a.download = 'nishkamtb-rag-chats.json'; a.click(); };
 function add(role, text, extra = '') { const p = document.createElement('div'); p.className = 'm ' + role; p.textContent = text; if (extra) { const f = document.createElement('div'); f.className = 'flag'; f.textContent = extra; p.append(f); } $('msgs').append(p); $('msgs').scrollTop = 1e9; return p; }
-function show() { $('msgs').innerHTML = ''; conv.messages.forEach((m) => add(m.role, m.content, m.flags)); showSources(conv.messages.findLast((m) => m.sources)?.sources || []); }
+// Assistant answers: status line (stages), search meta, thinking disclosure, answer text, citation flag.
+function newAnswer() {
+  const el = document.createElement('div'); el.className = 'm assistant';
+  el.innerHTML = '<div class="status"></div><div class="meta muted"></div><details class="think" hidden><summary>Thinking</summary><pre></pre></details><div class="ans"></div><div class="flag"></div>';
+  $('msgs').append(el); $('msgs').scrollTop = 1e9;
+  const [status, meta, think, ans, flag] = el.children;
+  return { el, status, meta, think, pre: think.lastElementChild, ans, flag };
+}
+function paintAnswer(v, visible, thinking = '', flags = '') {
+  v.ans.textContent = visible; v.pre.textContent = thinking; v.think.hidden = !thinking; v.flag.textContent = flags;
+}
+// Stage line: finished stages stay as muted lines with their seconds; the running one ticks once a second.
+function progress(el) {
+  const done = [], p = { cur: null, t0: 0, timer: 0 };
+  const draw = () => {
+    el.replaceChildren(...done.map((t) => Object.assign(document.createElement('div'), { className: 'muted', textContent: t })));
+    if (p.cur) el.append(Object.assign(document.createElement('div'), { className: 'live', textContent: `${p.cur} ${Math.round((performance.now() - p.t0) / 1000)} s` }));
+  };
+  const finish = () => {
+    if (p.cur) done.push(`${p.cur} ${Math.round((performance.now() - p.t0) / 1000)} s`);
+    p.cur = null; clearInterval(p.timer); p.timer = 0;
+  };
+  return {
+    set(msg) { finish(); p.cur = msg; p.t0 = performance.now(); p.timer = setInterval(draw, 1000); draw(); },
+    note(msg) { finish(); done.push(msg); draw(); },
+    clear() { finish(); el.replaceChildren(); },
+  };
+}
+function show() {
+  $('msgs').innerHTML = '';
+  for (const m of conv.messages) {
+    if (m.role === 'assistant') paintAnswer(newAnswer(), m.content, m.think, m.flags);
+    else add(m.role, m.content, m.flags);
+  }
+  showSources(conv.messages.findLast((m) => m.sources)?.sources || []);
+}
 function showSources(s) {
   $('srcList').innerHTML = s.length ? '' : 'No sources yet.';
   for (const x of s) { const d = document.createElement('div'); d.className = 'src'; d.innerHTML = '<b></b><div class="meta"></div><p></p>'; d.children[0].textContent = `S${x.n} · ${x.book_title}`; d.children[1].textContent = `${x.authors.join(', ')} · ch ${x.chapter} · ${x.section} · p ${x.page} · role ${x.pedagogical_role} · score ${x.score?.toFixed(3)}`; d.children[2].textContent = x.text; $('srcList').append(d); }
@@ -71,25 +106,45 @@ $('ask').onsubmit = async (e) => {
   const history = conv.messages.map(({ role, content }) => ({ role, content }));
   conv.messages.push({ role: 'user', content: question }); add('user', question);
   if (conv.title === 'New chat') conv.title = question.slice(0, 40);
-  const out = add('assistant', '...'); let answer = '', flags = '';
+  const v = newAnswer(), prog = progress(v.status);
+  let answer = '', think = '', raw = '', flags = '', started = false;
   try {
-    const llm = { provider: c.provider, model: c.model, key: c.key, base: c.base, signal: abort.signal };
-    const sq = history.length ? await rewriteQuery(llm, history, question) : question;
-    const opts = { rerank: ls.get('rerank', '1') === '1' };
+    const llm = { provider: c.provider, model: c.model, key: c.key, base: c.base, signal: abort.signal, timeoutMs: c.timeoutMs };
+    const sq = history.length ? (prog.set('Rewriting question…'), await rewriteQuery(llm, history, question)) : question;
+    const opts = { rerank: ls.get('rerank', '1') === '1', progress: (stage, n) => {
+      if (stage === 'models') prog.set('Loading search models (first time only)…');
+      else if (stage === 'search') prog.set('Searching the library…');
+      else if (stage === 'rerank') prog.set(`Reranking ${n} passages…`);
+    } };
     if (ls.get('llmRerank') === '1') opts.llmRank = (q, cands) => llmRank(llm, q, cands);
-    const r = ls.get('deep') === '1' ? await deepRetrieve(ix, sq, opts, (s) => followUpQuery(llm, question, s)) : await retrieve(ix, sq, opts);
-    showSources(r.sources);
-    out.textContent = `(search: "${sq}" · ${JSON.stringify(r.T)} ms)\n`;
-    if (r.rerankErr) out.textContent += r.rerankErr + ', using RRF order\n';
-    if (r.weak) { answer = 'Weak or no coverage in the library for this question. Not answering from outside knowledge.'; out.textContent += answer; }
+    const r = ls.get('deep') === '1'
+      ? await deepRetrieve(ix, sq, opts, (s) => (prog.set(`Asking ${c.provider}/${c.model} for a follow-up search…`), followUpQuery(llm, question, s)))
+      : await retrieve(ix, sq, opts);
+    showSources(r.sources);   // sources are on screen before the model is called
+    v.meta.textContent = `search: "${sq}" · ${JSON.stringify(r.T)} ms` + (r.rerankErr ? ` · ${r.rerankErr}, using RRF order` : '');
+    prog.note(`Found ${r.sources.length} sources`);
+    if (r.weak) { answer = 'Weak or no coverage in the library for this question. Not answering from outside knowledge.'; paintAnswer(v, answer); }
     else {
+      prog.set(`Asking ${c.provider}/${c.model}…`);
       const msgs = [...history, { role: 'user', content: `${buildContext(r.sources)}\n\nQuestion: ${question}` }];
-      for await (const t of stream({ ...llm, system: SYSTEM, messages: msgs })) { answer += t; out.textContent = answer; $('msgs').scrollTop = 1e9; }
-      const bad = checkCitations(answer, r.sources);
-      if (bad.length) { flags = 'Citation check: ' + bad.join('; '); const f = document.createElement('div'); f.className = 'flag'; f.textContent = flags; out.append(f); }
+      const onStage = (s) => { if (s === 'connected') prog.set('Thinking…'); };
+      for await (const t of stream({ ...llm, system: SYSTEM, messages: msgs, onStage })) {
+        if (!started) { started = true; prog.clear(); }
+        raw += t; ({ answer, think } = splitThink(raw)); paintAnswer(v, answer, think); $('msgs').scrollTop = 1e9;
+      }
+      if (!started) prog.clear();
+      ({ answer, think } = splitThink(raw, true)); paintAnswer(v, answer, think);
+      const bad = checkCitations(answer, r.sources);   // citation check on the visible answer only
+      if (bad.length) flags = 'Citation check: ' + bad.join('; ');
+      v.flag.textContent = flags;
     }
-    conv.messages.push({ role: 'assistant', content: answer, sources: r.sources, flags });
-  } catch (err) { out.textContent = 'Error: ' + err.message; if (answer) conv.messages.push({ role: 'assistant', content: answer }); }
+    conv.messages.push({ role: 'assistant', content: answer, think, sources: r.sources, flags });
+  } catch (err) {
+    prog.clear();
+    const msg = describeError(err, { provider: c.provider, base: c.base, timeoutMs: c.timeoutMs });
+    if (answer) { v.flag.textContent = msg; conv.messages.push({ role: 'assistant', content: answer, think }); }   // keep partial text, show why it stopped
+    else { paintAnswer(v, msg); v.ans.classList.add('warn'); }
+  }
   await db.putConv(conv); refresh(); $('send').hidden = false; $('stop').hidden = true;
 };
 $('q').onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('ask').requestSubmit(); } };

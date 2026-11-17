@@ -17,3 +17,9 @@ button{cursor:pointer}button:hover{border-color:var(--acc)}
 @media(max-width:800px){main{grid-template-columns:1fr}#convs,#srcs{display:none}}
 
 select{background:var(--bg);color:var(--fg)}select option{background:var(--bg);color:var(--fg)}
+.assistant .status:empty,.assistant .meta:empty,.assistant .flag:empty{display:none}
+.status{font-size:13px;color:var(--mut);margin:0 0 6px}.live::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--acc);margin-right:6px;vertical-align:middle}
+@media (prefers-reduced-motion: no-preference){.live::before{animation:pulse 1.2s ease-in-out infinite alternate}}
+@keyframes pulse{to{opacity:.2}}
+.meta{font-size:12px;margin:0 0 6px}.think{font-size:13px;color:var(--mut);margin:0 0 8px}.think pre{white-space:pre-wrap;margin:6px 0 0;font:inherit}
+.ans.warn{white-space:pre-wrap}
