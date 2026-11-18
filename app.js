@@ -1,4 +1,4 @@
-import { fetchManifest, unlock, loadIndex, retrieve, deepRetrieve, conceptRetrieve, isDesignAsk, warmReranker } from './lib/rag.js';
+import { fetchManifest, unlock, loadIndex, retrieve, deepRetrieve, conceptRetrieve, isDesignAsk, isRuleChange, warmReranker } from './lib/rag.js';
 import { PROVIDERS, SYSTEM, buildContext, isLocal, checkCitations, stream, rewriteQuery, followUpQuery, llmRank, splitThink, describeError, buildUserMessage } from './lib/llm.js';
 import * as db from './lib/db.js';
 
@@ -125,7 +125,8 @@ $('ask').onsubmit = async (e) => {
     showSources(r.sources);   // sources are on screen before the model is called
     v.meta.textContent = `search: "${sq}" · ${JSON.stringify(r.T)} ms` + (r.rerankErr ? ` · ${r.rerankErr}, using RRF order` : '');
     prog.note(`Found ${r.sources.length} sources`);
-    if (r.weak) { answer = 'Weak or no coverage in the library for this question. Not answering from outside knowledge.'; paintAnswer(v, answer); }
+    if (isRuleChange(question)) { answer = 'Not answering: this asks to change the rules, reveal the prompt or dump the sources. The sources are listed on the right; ask a question about them.'; paintAnswer(v, answer); }
+    else if (r.weak) { answer = 'Weak or no coverage in the library for this question. Not answering from outside knowledge.'; paintAnswer(v, answer); }
     else {
       prog.set(`Asking ${c.provider}/${c.model}…`);
       const local = isLocal(c.base), src = local ? r.sources.slice(0, r.concepts ? 6 : 4) : r.sources;   // local models: fewer, shorter sources
