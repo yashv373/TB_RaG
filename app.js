@@ -8,10 +8,13 @@ const $ = (id) => document.getElementById(id);
 const ls = { get: (k, d = '') => { try { return localStorage.getItem(k) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* blocked */ } }, del: (k) => { try { localStorage.removeItem(k); } catch { /* blocked */ } } };
 const ss = { get: (k) => { try { return sessionStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch { /* blocked */ } }, del: (k) => { try { sessionStorage.removeItem(k); } catch { /* blocked */ } } };
 let man, ix, conv, convs = [], abort;
+const manReady = fetchManifest();   // started at once; Unlock waits for it (an autofilled passphrase can be submitted before it arrives)
+manReady.catch(() => {});
 
 // ---------- unlock ----------
 async function tryUnlock(pass) {
   $('gateMsg').textContent = 'Deriving key...';
+  if (!man) { try { man = await manReady; } catch { $('gateMsg').textContent = 'Cannot load index manifest. Check your connection and reload.'; return false; } }
   const key = await unlock(man, pass);
   if (!key) { $('gateMsg').textContent = 'Wrong passphrase.'; return false; }
   $('gateMsg').textContent = 'Decrypting library...';
@@ -160,7 +163,7 @@ $('q').onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDef
 window.__retrieve = (q, o) => retrieve(ix, q, o);
 
 (async () => {
-  try { man = await fetchManifest(); } catch (e) { $('gateMsg').textContent = 'Cannot load index manifest.'; return; }
+  try { man = await manReady; } catch (e) { $('gateMsg').textContent = 'Cannot load index manifest.'; return; }
   await start();
   const p = ss.get('pp'); if (p) try { await tryUnlock(p); } catch { ss.del('pp'); }
 })();
