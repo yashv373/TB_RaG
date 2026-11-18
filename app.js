@@ -127,7 +127,7 @@ $('ask').onsubmit = async (e) => {
     if (r.weak) { answer = 'Weak or no coverage in the library for this question. Not answering from outside knowledge.'; paintAnswer(v, answer); }
     else {
       prog.set(`Asking ${c.provider}/${c.model}…`);
-      const local = isLocal(c.base), src = local ? r.sources.slice(0, 4) : r.sources;   // local models: fewer, shorter sources
+      const local = isLocal(c.base), src = local ? r.sources.slice(0, r.concepts ? 6 : 4) : r.sources;   // local models: fewer, shorter sources
       const ctx = buildContext(src, local ? { maxChars: 6000, parentChars: 0 } : {});
       const msgs = [...history.slice(local ? -2 : -8), { role: 'user', content: buildUserMessage({ question, ctx, brief: ix.brief, local }) }];
       const onStage = (s) => { if (s === 'connected') prog.set('Thinking…'); };
