@@ -1,5 +1,5 @@
 import { fetchManifest, unlock, loadIndex, retrieve, deepRetrieve, warmReranker } from './lib/rag.js';
-import { PROVIDERS, SYSTEM, buildContext, isLocal, checkCitations, stream, rewriteQuery, followUpQuery, llmRank, splitThink, describeError } from './lib/llm.js';
+import { PROVIDERS, SYSTEM, buildContext, isLocal, checkCitations, stream, rewriteQuery, followUpQuery, llmRank, splitThink, describeError, buildUserMessage } from './lib/llm.js';
 import * as db from './lib/db.js';
 
 const $ = (id) => document.getElementById(id);
