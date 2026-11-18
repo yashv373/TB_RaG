@@ -1,4 +1,4 @@
-import { fetchManifest, unlock, loadIndex, retrieve, deepRetrieve, conceptRetrieve, warmReranker } from './lib/rag.js';
+import { fetchManifest, unlock, loadIndex, retrieve, deepRetrieve, conceptRetrieve, isDesignAsk, warmReranker } from './lib/rag.js';
 import { PROVIDERS, SYSTEM, buildContext, isLocal, checkCitations, stream, rewriteQuery, followUpQuery, llmRank, splitThink, describeError, buildUserMessage } from './lib/llm.js';
 import * as db from './lib/db.js';
 
@@ -121,6 +121,7 @@ $('ask').onsubmit = async (e) => {
       ? await deepRetrieve(ix, sq, opts, (s) => (prog.set(`Asking ${c.provider}/${c.model} for a follow-up search…`), followUpQuery(llm, question, s)))
       : await retrieve(ix, sq, opts);
     if (r.weak) { prog.note('Whole question matched weakly; searching each concept separately'); r = await conceptRetrieve(ix, sq, opts, r); }
+    if (r.weak && isDesignAsk(question)) { r = { ...r, weak: false }; prog.note('Library coverage is thin: the answer will be mostly editorial'); }   // design work is grounded by the Nishkam brief too
     showSources(r.sources);   // sources are on screen before the model is called
     v.meta.textContent = `search: "${sq}" · ${JSON.stringify(r.T)} ms` + (r.rerankErr ? ` · ${r.rerankErr}, using RRF order` : '');
     prog.note(`Found ${r.sources.length} sources`);
