@@ -1,6 +1,8 @@
 import { fetchManifest, unlock, loadIndex, retrieve, deepRetrieve, conceptRetrieve, isDesignAsk, isRuleChange, warmReranker } from './lib/rag.js';
 import { PROVIDERS, SYSTEM, buildContext, isLocal, checkCitations, stream, rewriteQuery, followUpQuery, llmRank, splitThink, describeError, buildUserMessage } from './lib/llm.js';
 import * as db from './lib/db.js';
+// Small models ignore system rule 3 for design asks and reply "Not covered"; the same rule next to the question works better.
+const DESIGN_NOTE = '\n\n(This is a question-design request. Do not answer "Not covered": use the sources as background, design the question in the editorial section, add the Nishkam fit line, and name concepts the sources lack.)';
 
 const $ = (id) => document.getElementById(id);
 const ls = { get: (k, d = '') => { try { return localStorage.getItem(k) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* blocked */ } }, del: (k) => { try { localStorage.removeItem(k); } catch { /* blocked */ } } };
@@ -131,7 +133,7 @@ $('ask').onsubmit = async (e) => {
       prog.set(`Asking ${c.provider}/${c.model}…`);
       const local = isLocal(c.base), src = local ? r.sources.slice(0, r.concepts ? 6 : 4) : r.sources;   // local models: fewer, shorter sources
       const ctx = buildContext(src, local ? { maxChars: 6000, parentChars: 0 } : {});
-      const msgs = [...history.slice(local ? -2 : -8), { role: 'user', content: buildUserMessage({ question, ctx, brief: ix.brief, local }) }];
+      const msgs = [...history.slice(local ? -2 : -8), { role: 'user', content: buildUserMessage({ question: isDesignAsk(question) ? question + DESIGN_NOTE : question, ctx, brief: ix.brief, local }) }];
       const onStage = (s) => { if (s === 'connected') prog.set('Thinking…'); };
       for await (const t of stream({ ...llm, system: SYSTEM, messages: msgs, onStage })) {
         if (!started) { started = true; prog.clear(); }
