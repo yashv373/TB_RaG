@@ -1,5 +1,5 @@
 {
- "version": 44,
+ "version": 47,
  "model": "Xenova/all-MiniLM-L6-v2",
  "dim": 384,
  "quant": "int8/127",
@@ -8,7 +8,7 @@
  "kdf": {
   "name": "PBKDF2-SHA256",
   "iterations": 600000,
-  "salt": "d0c5a0b681f9b7e336e9c10743fa99c7"
+  "salt": "9dd5c952091b4e8e840efef7b7132c4e"
  },
  "cipher": "AES-256-GCM, file = iv(12)||ct||tag, AAD = file name",
  "check": {
@@ -16,12 +16,12 @@
   "sha": "c467580b4c5b3292"
  },
  "global": {
-  "f": "global-8f9f785cc796ad20.bin",
-  "sha": "8f9f785cc796ad20"
+  "f": "global-49da2eab825ffde0.bin",
+  "sha": "49da2eab825ffde0"
  },
  "catalog": {
-  "f": "catalog-14ad379ab6712fd4.bin",
-  "sha": "14ad379ab6712fd4"
+  "f": "catalog-29152d6360686acc.bin",
+  "sha": "29152d6360686acc"
  },
  "brief": {
   "f": "brief-281217527bf0af49.bin",
