@@ -1,4 +1,4 @@
-import { fetchManifest, unlock, loadIndex, retrieve, deepRetrieve, warmReranker } from './lib/rag.js';
+import { fetchManifest, unlock, loadIndex, retrieve, deepRetrieve, conceptRetrieve, warmReranker } from './lib/rag.js';
 import { PROVIDERS, SYSTEM, buildContext, isLocal, checkCitations, stream, rewriteQuery, followUpQuery, llmRank, splitThink, describeError, buildUserMessage } from './lib/llm.js';
 import * as db from './lib/db.js';
 
@@ -117,9 +117,10 @@ $('ask').onsubmit = async (e) => {
       else if (stage === 'rerank') prog.set(`Reranking ${n} passages…`);
     } };
     if (ls.get('llmRerank') === '1') opts.llmRank = (q, cands) => llmRank(llm, q, cands);
-    const r = ls.get('deep') === '1'
+    let r = ls.get('deep') === '1'
       ? await deepRetrieve(ix, sq, opts, (s) => (prog.set(`Asking ${c.provider}/${c.model} for a follow-up search…`), followUpQuery(llm, question, s)))
       : await retrieve(ix, sq, opts);
+    if (r.weak) { prog.note('Whole question matched weakly; searching each concept separately'); r = await conceptRetrieve(ix, sq, opts, r); }
     showSources(r.sources);   // sources are on screen before the model is called
     v.meta.textContent = `search: "${sq}" · ${JSON.stringify(r.T)} ms` + (r.rerankErr ? ` · ${r.rerankErr}, using RRF order` : '');
     prog.note(`Found ${r.sources.length} sources`);
