@@ -122,7 +122,8 @@ $('ask').onsubmit = async (e) => {
       else if (stage === 'rerank') prog.set(`Reranking ${n} passages…`);
     } };
     if (ls.get('llmRerank') === '1') opts.llmRank = (q, cands) => llmRank(llm, q, cands);
-    let r = ls.get('deep') === '1'
+    let r = isRuleChange(question) ? { sources: [], weak: false, T: {} }   // refused below; skip the search entirely
+      : ls.get('deep') === '1'
       ? await deepRetrieve(ix, sq, opts, (s) => (prog.set(`Asking ${c.provider}/${c.model} for a follow-up search…`), followUpQuery(llm, question, s)))
       : await retrieve(ix, sq, opts);
     if (r.weak) { prog.note('Whole question matched weakly; searching each concept separately'); r = await conceptRetrieve(ix, sq, opts, r); }
