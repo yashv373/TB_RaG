@@ -128,7 +128,7 @@ $('ask').onsubmit = async (e) => {
       prog.set(`Asking ${c.provider}/${c.model}…`);
       const local = isLocal(c.base), src = local ? r.sources.slice(0, 4) : r.sources;   // local models: fewer, shorter sources
       const ctx = buildContext(src, local ? { maxChars: 6000, parentChars: 0 } : {});
-      const msgs = [...history.slice(local ? -2 : -8), { role: 'user', content: `Question: ${question}\n\nSources:\n${ctx}\n\nAnswer the question above using these sources. Do not repeat the sources. Question again: ${question}` }];
+      const msgs = [...history.slice(local ? -2 : -8), { role: 'user', content: buildUserMessage({ question, ctx, brief: ix.brief, local }) }];
       const onStage = (s) => { if (s === 'connected') prog.set('Thinking…'); };
       for await (const t of stream({ ...llm, system: SYSTEM, messages: msgs, onStage })) {
         if (!started) { started = true; prog.clear(); }
